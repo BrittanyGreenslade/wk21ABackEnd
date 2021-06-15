@@ -48,84 +48,58 @@ def new_candy():
 
 @app.patch("/candy")
 def update_candy():
-    name = ""
-    desc = ""
-    price = None
-    img = ""
     candy_id = None
     try:
-        name = request.json['name']
         candy_id = int(request.json['candyId'])
-        desc = request.json['desc']
-        price = float(request.json['price'])
-        img = request.json['img']
+        name = request.json.get('name')
+        desc = request.json.get('desc')
+        price = request.json.get('price')
+        if price != None and price != "":
+            price = float(price)
+        img = request.json.get('img')
     except:
         traceback.print_exc()
     conn = dbconnect.get_db_connection()
     cursor = dbconnect.get_db_cursor(conn)
-    # there has to be a better way to do this......
-    try:
-        if name != "":
-            cursor.execute("UPDATE candy SET name = ?, description = description, price = price, image_url = image_url WHERE id = ?",
-                           [name, candy_id])
-            conn.commit()
-    except:
-        traceback.print_exc()
-    try:
-        if desc != "":
-            cursor.execute("UPDATE candy SET description = ?, name = name, price = price, image_url = image_url WHERE id = ?",
-                           [desc, candy_id])
-            conn.commit()
-    except:
-        traceback.print_exc()
-    try:
-        if price != None:
-            cursor.execute("UPDATE candy SET price = ?, name = name, description = description, image_url = image_url WHERE id = ?",
-                           [price, candy_id])
-            conn.commit()
-    except:
-        traceback.print_exc()
-    try:
-        if img != "":
-            cursor.execute("UPDATE candy SET image_url = ?, name = name, description = description, price = price WHERE id = ?",
-                           [img, candy_id])
-            conn.commit()
-    except:
-        traceback.print_exc()
-    # if desc != None:
-        # try:
-        #     cursor.execute("UPDATE candy SET description = ?, name = name, price = price, image_url = image_url WHERE id = ?",
-        #                    [desc, candy_id])
-        #     conn.commit()
-        # except:
-        #     traceback.print_exc()
-
-    # if price != None and candy_id != None:
-    # try:
-    #     cursor.execute("UPDATE candy SET price = ? WHERE price = ? AND id = ?",
-    #                    [price, old_price, candy_id])
-    #     conn.commit()
-    # except:
-    #     traceback.print_exc()
-    # # if img != None and candy_id != None:
-    # try:
-    #     cursor.execute("UPDATE candy SET image_url = ? WHERE image_url = ? AND id = ?",
-    #                    [img, old_img, candy_id])
-    #     conn.commit()
-    # except:
-    #     traceback.print_exc()
+    candies_args = []
+    if candy_id != None and candy_id != "":
+        try:
+            if name != None and name != "":
+                cursor.execute("UPDATE candy SET name = ? WHERE id = ?",
+                               [name, candy_id])
+                conn.commit()
+                candies_args.append(name)
+        except:
+            traceback.print_exc()
+        try:
+            if desc != None and desc != "":
+                cursor.execute("UPDATE candy SET description = ? WHERE id = ?",
+                               [desc, candy_id])
+                conn.commit()
+                candies_args.append(desc)
+        except:
+            traceback.print_exc()
+        try:
+            if price != None and price != "":
+                cursor.execute("UPDATE candy SET price = ? WHERE id = ?",
+                               [price, candy_id])
+                conn.commit()
+                candies_args.append(price)
+        except:
+            traceback.print_exc()
+        try:
+            if img != None and img != "":
+                cursor.execute("UPDATE candy SET image_url = ? WHERE id = ?",
+                               [img, candy_id])
+                conn.commit()
+                candies_args.append(img)
+        except:
+            traceback.print_exc()
+    else:
+        return Response("Something went wrong", mimetype='text/plain', status=400)
     dbconnect.close_db_cursor(cursor)
     dbconnect.close_db_connection(conn)
-    candy_json = json.dumps([name, candy_id, desc, price, img], default=str)
-    # candy_dictionary = {}
-    # for info in updated_candy:
-    #     candy_dictionary = {
-    #         "name": info[0],
-    #         "desc": info[1],
-    #         "price": info[2],
-    #         "img": info[3]
-    #     }
-    candy_json = json.dumps(candy_json, default=str)
+    candy_json = json.dumps(candies_args, default=str)
     return Response(candy_json, mimetype='application/json', status=200)
 
 
