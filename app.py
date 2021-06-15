@@ -9,6 +9,7 @@ CORS(app)
 
 @app.get("/candy")
 def get_candy():
+    candies = None
     conn = dbconnect.get_db_connection()
     cursor = dbconnect.get_db_cursor(conn)
     cursor.execute(
@@ -17,9 +18,11 @@ def get_candy():
     )
     dbconnect.close_db_cursor(cursor)
     dbconnect.close_db_connection(conn)
-
-    candies_json = json.dumps(candies, default=str)
-    return Response(candies_json, mimetype='application/json', status=200)
+    if candies == None:
+        return Response("There was an error getting the candies", mimetype='application/json', status=500)
+    else:
+        candies_json = json.dumps(candies, default=str)
+        return Response(candies_json, mimetype='application/json', status=200)
 
 
 @app.post("/candy")
@@ -33,17 +36,22 @@ def new_candy():
         traceback.print_exc()
     conn = dbconnect.get_db_connection()
     cursor = dbconnect.get_db_cursor(conn)
+    new_id = -1
     try:
         cursor.execute(
             "INSERT INTO candy(name, description, price, image_url) VALUES(?, ?, ?, ?)", [name, desc, price, img])
         conn.commit()
+        new_id = cursor.lastrowid
     except:
         traceback.print_exc()
+        print("Sonething went wrong, please try again")
     dbconnect.close_db_cursor(cursor)
     dbconnect.close_db_connection(conn)
-
-    candy_json = json.dumps([name, desc, price, img], default=str)
-    return Response(candy_json, mimetype='application/json', status=200)
+    if new_id == -1:
+        return Response("New candy addition failed", mimetype='application/json', status=500)
+    else:
+        candy_json = json.dumps([name, desc, price, img, new_id], default=str)
+        return Response(candy_json, mimetype='application/json', status=200)
 
 
 @app.patch("/candy")
