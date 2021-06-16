@@ -1,4 +1,4 @@
-from flask import Flask, app, request, Response
+from flask import Flask, request, Response
 from flask_cors import CORS
 import json
 import traceback
@@ -19,7 +19,7 @@ def get_candy():
     dbconnect.close_db_cursor(cursor)
     dbconnect.close_db_connection(conn)
     if candies == None:
-        return Response("There was an error getting the candies", mimetype='application/json', status=500)
+        return Response("There was an error getting the candies", mimetype='text/plain', status=500)
     else:
         candies_json = json.dumps(candies, default=str)
         return Response(candies_json, mimetype='application/json', status=200)
@@ -28,6 +28,7 @@ def get_candy():
 @app.post("/candy")
 def new_candy():
     try:
+        # this comes from user input
         name = request.json['name']
         desc = request.json['desc']
         price = float(request.json['price'])
@@ -48,7 +49,7 @@ def new_candy():
     dbconnect.close_db_cursor(cursor)
     dbconnect.close_db_connection(conn)
     if new_id == -1:
-        return Response("New candy addition failed", mimetype='application/json', status=500)
+        return Response("New candy addition failed", mimetype='text/plain   ', status=500)
     else:
         candy_json = json.dumps([name, desc, price, img, new_id], default=str)
         return Response(candy_json, mimetype='application/json', status=200)
@@ -58,6 +59,7 @@ def new_candy():
 def update_candy():
     candy_id = None
     try:
+        # .get here returns none if the input is empty
         candy_id = int(request.json['candyId'])
         name = request.json.get('name')
         desc = request.json.get('desc')
@@ -69,6 +71,7 @@ def update_candy():
         traceback.print_exc()
     conn = dbconnect.get_db_connection()
     cursor = dbconnect.get_db_cursor(conn)
+    # set empty array that we can append/push to it
     candies_args = []
     if candy_id != None and candy_id != "":
         try:
@@ -76,14 +79,17 @@ def update_candy():
                 cursor.execute("UPDATE candy SET name = ? WHERE id = ?",
                                [name, candy_id])
                 conn.commit()
+                # adds this argument to candy_args = [] if it exists
                 candies_args.append(name)
         except:
             traceback.print_exc()
+        # try to put these all into one cursor.execute
         try:
             if desc != None and desc != "":
                 cursor.execute("UPDATE candy SET description = ? WHERE id = ?",
                                [desc, candy_id])
                 conn.commit()
+                # adds this argument to candy_args = [] if it exists
                 candies_args.append(desc)
         except:
             traceback.print_exc()
@@ -92,6 +98,7 @@ def update_candy():
                 cursor.execute("UPDATE candy SET price = ? WHERE id = ?",
                                [price, candy_id])
                 conn.commit()
+                # adds this argument to candy_args = [] if it exists
                 candies_args.append(price)
         except:
             traceback.print_exc()
@@ -100,6 +107,7 @@ def update_candy():
                 cursor.execute("UPDATE candy SET image_url = ? WHERE id = ?",
                                [img, candy_id])
                 conn.commit()
+                # adds this argument to candy_args = [] if it exists
                 candies_args.append(img)
         except:
             traceback.print_exc()
@@ -108,7 +116,7 @@ def update_candy():
     dbconnect.close_db_cursor(cursor)
     dbconnect.close_db_connection(conn)
     candy_json = json.dumps(candies_args, default=str)
-    return Response(candy_json, mimetype='application/json', status=200)
+    return Response("Candy name updated", mimetype='text/plain', status=200)
 
 
 @app.delete("/candy")
