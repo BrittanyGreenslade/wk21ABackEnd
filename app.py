@@ -12,10 +12,15 @@ def get_candy():
     candies = None
     conn = dbconnect.get_db_connection()
     cursor = dbconnect.get_db_cursor(conn)
-    cursor.execute(
-        "SELECT name, description, price, image_url, id FROM candy ORDER BY id DESC")
-    candies = cursor.fetchall(
-    )
+    try:
+        cursor.execute(
+            "SELECT name, description, price, image_url, id FROM candy ORDER BY id DESC")
+        candies = cursor.fetchall(
+        )
+    except:
+        traceback.print_exc()
+        return Response("Sorry, something went wrong", mimetype='text/plain', status=500)
+
     dbconnect.close_db_cursor(cursor)
     dbconnect.close_db_connection(conn)
     if candies == None:
@@ -35,6 +40,7 @@ def new_candy():
         img = request.json['img']
     except:
         traceback.print_exc()
+        return Response("Incorrect input data", mimetype='text/plain', status=400)
     conn = dbconnect.get_db_connection()
     cursor = dbconnect.get_db_cursor(conn)
     new_id = -1
@@ -45,12 +51,13 @@ def new_candy():
         new_id = cursor.lastrowid
     except:
         traceback.print_exc()
-        print("Sonething went wrong, please try again")
+        return Response("Sorry, something went wrong", mimetype='text/plain', status=500)
     dbconnect.close_db_cursor(cursor)
     dbconnect.close_db_connection(conn)
     if new_id == -1:
-        return Response("New candy addition failed", mimetype='text/plain   ', status=500)
+        return Response("New candy addition failed; try again", mimetype='text/plain   ', status=500)
     else:
+        # needs to return json to push in vue
         candy_json = json.dumps([name, desc, price, img, new_id], default=str)
         return Response(candy_json, mimetype='application/json', status=200)
 
@@ -69,6 +76,7 @@ def update_candy():
         img = request.json.get('img')
     except:
         traceback.print_exc()
+        return Response("Invalid data input, please try again", mimetype='text/plain', status=400)
     conn = dbconnect.get_db_connection()
     cursor = dbconnect.get_db_cursor(conn)
     # set empty array that we can append/push to it
@@ -82,17 +90,21 @@ def update_candy():
                 # adds this argument to candy_args = [] if it exists
                 candies_args.append(name)
         except:
+            # assume server error if gets to this point because these aren't mandatory
             traceback.print_exc()
+            return Response("Update failed, please try again", mimetype='text/plain', status=500)
+
         # try to put these all into one cursor.execute
         try:
             if desc != None and desc != "":
                 cursor.execute("UPDATE candy SET description = ? WHERE id = ?",
                                [desc, candy_id])
                 conn.commit()
-                # adds this argument to candy_args = [] if it exists
+                # adds this argument to candy_args = [] if arg exists
                 candies_args.append(desc)
         except:
             traceback.print_exc()
+            return Response("Update failed, please try again", mimetype='text/plain', status=500)
         try:
             if price != None and price != "":
                 cursor.execute("UPDATE candy SET price = ? WHERE id = ?",
@@ -102,6 +114,7 @@ def update_candy():
                 candies_args.append(price)
         except:
             traceback.print_exc()
+            return Response("Update failed, please try again", mimetype='text/plain', status=500)
         try:
             if img != None and img != "":
                 cursor.execute("UPDATE candy SET image_url = ? WHERE id = ?",
@@ -111,31 +124,47 @@ def update_candy():
                 candies_args.append(img)
         except:
             traceback.print_exc()
+            return Response("Update failed, please try again", mimetype='text/plain', status=500)
     else:
+        # this is client-side error b/c incorrect candy id input
         return Response("Something went wrong", mimetype='text/plain', status=400)
     dbconnect.close_db_cursor(cursor)
     dbconnect.close_db_connection(conn)
-    candy_json = json.dumps(candies_args, default=str)
-    return Response("Candy name updated", mimetype='text/plain', status=200)
+    if len(candies_args) == 0:
+        return Response("No updated info inserted", mimetype='text/plain', status=400)
+    else:
+        # needs to return json to update with
+        candy_json = json.dumps(candies_args, default=str)
+        return Response(candy_json, mimetype='text/plain', status=200)
 
 
 @app.delete("/candy")
 def delete_candy():
+    candy_id = None
     try:
         candy_id = int(request.json['candyId'])
     except:
         traceback.print_exc()
+        return Response("Invalid candy Id", mimetype='text/plain', status=400)
+    # this feels bad to put this exact response twice.....
+    if candy_id == None:
+        return Response("Invalid candy Id", mimetype='text/plain', status=400)
     conn = dbconnect.get_db_connection()
     cursor = dbconnect.get_db_cursor(conn)
     try:
         cursor.execute("DELETE FROM candy WHERE id = ?", [candy_id, ])
         conn.commit()
+        row_count = cursor.rowcount
     except:
         traceback.print_exc()
+        return Response("Please try again", mimetype='text/plain', status=500)
     dbconnect.close_db_cursor(cursor)
     dbconnect.close_db_connection(conn)
-
-    return Response("Candy deleted!", mimetype='text/plain', status=200)
+    if row_count == 1:
+        # would handle delete from [] on vue side
+        return Response("Candy deleted!", mimetype='text/plain', status=200)
+    else:
+        return Response("Something went wrong, please try again", mimetype='text/plain', status=500)
 
 
 app.run(debug=True)
